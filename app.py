@@ -162,6 +162,54 @@ if selected:
         st.rerun()
 
 # --- 4. DISPLAY GROUPS & TEE TIMES ---
+def process_results(all_scores):
+    # 1. Load the latest database
+    members_list = load_members()
+    
+    # 2. Identify Winners (Overall, Front 9, Back 9)
+    # This logic assumes the top score wins. If multiple tie, they split the pot.
+    best_overall = max(p['total'] for p in all_scores)
+    best_f9 = max(p['f9'] for p in all_scores)
+    best_b9 = max(p['b9'] for p in all_scores)
+    
+    winners_overall = [p['name'] for p in all_scores if p['total'] == best_overall]
+    winners_f9 = [p['name'] for p in all_scores if p['f9'] == best_f9]
+    winners_b9 = [p['name'] for p in all_scores if p['b9'] == best_b9]
+    
+    # 3. Calculate Payouts (Assuming £15 pots as discussed)
+    pot_value = 15.0  # You can make this dynamic based on your sidebar input
+    
+    overall_share = pot_value / len(winners_overall)
+    f9_share = pot_value / len(winners_f9)
+    b9_share = pot_value / len(winners_b9)
+    
+    # 4. Apply "Progressive Tax" and Update Database
+    for m in members_list:
+        p_score = next((s for s in all_scores if s['name'] == m['name']), None)
+        if not p_score: continue
+        
+        amt_won = 0
+        if m['name'] in winners_overall: amt_won += overall_share
+        if m['name'] in winners_f9: amt_won += f9_share
+        if m['name'] in winners_b9: amt_won += b9_share
+        
+        # Handicap Deduction Logic
+        if amt_won >= 15.0:
+            m['handicap'] = round(m['handicap'] * 0.90, 1) # 10% Cut
+        elif amt_won > 0:
+            m['handicap'] = round(m['handicap'] * 0.95, 1) # 5% Cut
+            
+        m['main_winnings'] += amt_won
+        
+        # Handle 2s Pot
+        if p_score['two']:
+            m['twos_count'] += 1
+            # Logic for 2s payout would go here
+            
+    # 5. Save and Finish
+    save_all_members(members_list)
+    st.success("Results Processed! Handicaps updated and winners recorded.")
+    st.balloons()
 if st.session_state.groups:
     st.write("---")
     st.header("🏆 Step 2: Scoring & Results")
