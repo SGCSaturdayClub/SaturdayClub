@@ -44,15 +44,15 @@ if all_members:
     
     with col_left:
         st.subheader("🏆 Main Money List")
-        main_list = sorted(all_members, key=lambda x: x['main_winnings'], reverse=True)[:3]
+        main_list = sorted(all_members, key=lambda x: x['Winnings'], reverse=True)[:3]
         for i, m in enumerate(main_list):
-            st.write(f"{['🥇','🥈','🥉'][i]} **{m['name']}**: £{m['main_winnings']:.2f}")
+            st.write(f"{['🥇','🥈','🥉'][i]} **{m['name']}**: £{m['Winnings']:.2f}")
 
     with col_right:
         st.subheader("🎯 2s Money List")
-        twos_list = sorted(all_members, key=lambda x: x['twos_winnings'], reverse=True)[:3]
+        twos_list = sorted(all_members, key=lambda x: x['2s_Winnings'], reverse=True)[:3]
         for i, m in enumerate(twos_list):
-            st.write(f"{['🥇','🥈','🥉'][i]} **{m['name']}**: £{m['twos_winnings']:.2f} ({m['twos_count']} total)")
+            st.write(f"{['🥇','🥈','🥉'][i]} **{m['name']}**: £{m['2s']:.2f} ({m['2s']} total)")
     st.write("---")
 
 # --- SIDEBAR ADMIN ---
