@@ -70,8 +70,8 @@ with st.sidebar:
         st.rerun()
 
 # --- 2. CHECK-IN ---
-member_names = sorted([m['name'] for m in all_members])
-selected = st.multiselect("Check-in Players:", member_names)
+member_names = sorted([m['Name'] for m in all_members])
+selected = st.multiselect("Check-in Players:", Names)
 
 if selected:
     if st.button("Shuffle & Start Round"):
