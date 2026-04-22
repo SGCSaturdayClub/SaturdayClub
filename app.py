@@ -48,8 +48,8 @@ def save_all_members(member_list):
     pd.DataFrame(member_list).to_csv(DB_FILE, index=False)
 
 # --- UI SETUP ---
-st.set_page_config(page_title="Golf Roll-Up Pro", layout="wide")
-st.title("⛳ Club Roll-Up: Season 2026")
+st.set_page_config(page_title="Seckford Golf Club Saturday Club", layout="wide")
+st.title("⛳ Saturday Club: 2026")
 
 all_members = load_members()
 
