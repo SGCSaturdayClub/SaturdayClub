@@ -122,7 +122,7 @@ if selected:
             if st.checkbox(f"Priority: {name}", key=f"pri_{name}"):
                 priority_players.append(name)
 
-# --- 3. THE DRAW (With 8-Min Intervals) ---
+# --- 3. THE DRAW (With 8:30 Start) ---
 if selected:
     if st.button("Shuffle & Generate Tee Times"):
         members_list = load_members()
@@ -131,14 +131,14 @@ if selected:
         priority_list = [m for m in members_list if m['name'] in priority_players]
         normal_list = [m for m in members_list if m['name'] in selected and m['name'] not in priority_players]
         
-        # Randomize both lists separately
+        # Randomize both lists separately to maintain fairness within the tiers
         random.shuffle(priority_list)
         random.shuffle(normal_list)
         
-        # Combine: Priority players first
+        # Combine: Priority players at the front of the queue
         full_roster = priority_list + normal_list
         
-        # Update appearance counts in the main database
+        # Update appearance counts
         for m in members_list:
             if m['name'] in selected:
                 m['appearances'] += 1
@@ -149,22 +149,25 @@ if selected:
         num_fours = 1 if n % 3 == 1 else 2 if n % 3 == 2 else 0
         num_threes = (n - (num_fours * 4)) // 3
         
-        groups = []
+        gps = []
         idx = 0
         for _ in range(num_fours): 
-            groups.append(full_roster[idx:idx+4])
+            gps.append(full_roster[idx:idx+4])
             idx += 4
         for _ in range(num_threes): 
-            groups.append(full_roster[idx:idx+3])
+            gps.append(full_roster[idx:idx+3])
             idx += 3
         
-        st.session_state.groups = groups
+        st.session_state.groups = gps
         st.rerun()
 
-# --- DISPLAY GROUPS WITH TEE TIMES ---
+# --- 4. DISPLAY GROUPS & TEE TIMES ---
 if st.session_state.groups:
+    st.write("---")
     st.header("⛳ Today's Groups & Tee Times")
-    start_time = datetime.strptime("08:00", "%H:%M") # You can change the start time here
+    
+    # Starting at 08:30
+    start_time = datetime.strptime("08:30", "%H:%M")
     
     for i, group in enumerate(st.session_state.groups):
         tee_time = (start_time + timedelta(minutes=i * 8)).strftime("%H:%M")
@@ -172,8 +175,7 @@ if st.session_state.groups:
             st.subheader(f"🕞 {tee_time} - Group {i+1}")
             names = ", ".join([p['name'] for p in group])
             st.write(f"**Players:** {names}")
-            st.write("---")
-# --- 4. FULL LEADERBOARD ---
-with st.expander("Full Season Stats"):
-    df_full = pd.DataFrame(all_members).sort_values("main_winnings", ascending=False)
-    st.table(df_full)
+            
+    st.write("---")
+    st.header("🏆 Enter Results")
+    # ... Scoring logic follows below ...
