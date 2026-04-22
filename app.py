@@ -34,7 +34,7 @@ def save_all_members(member_list):
 
 # --- UI SETUP ---
 st.set_page_config(page_title="Golf Roll-Up Pro", layout="wide")
-st.title("⛳ Saturday Club: Season 2026")
+st.title("⛳ Saturday Club: 2026")
 
 all_members = load_members()
 
