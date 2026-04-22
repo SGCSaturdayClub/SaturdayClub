@@ -210,6 +210,32 @@ def process_results(all_scores):
     save_all_members(members_list)
     st.success("Results Processed! Handicaps updated and winners recorded.")
     st.balloons()
+# --- WINNERS SUMMARY DISPLAY ---
+    st.write("---")
+    st.success("### 💰 Payout Summary")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.subheader("Overall")
+        for w in winners_overall:
+            st.write(f"🏆 **{w}** (£{overall_share:.2f})")
+            
+    with col2:
+        st.subheader("Front 9")
+        for w in winners_f9:
+            st.write(f"🚩 **{w}** (£{f9_share:.2f})")
+            
+    with col3:
+        st.subheader("Back 9")
+        for w in winners_b9:
+            st.write(f"🏁 **{w}** (£{b9_share:.2f})")
+
+    # Optional: Display who hit a 2
+    twos_winners = [p['name'] for p in all_scores if p['two']]
+    if twos_winners:
+        st.write("---")
+        st.info(f"🎯 **2s Hit By:** {', '.join(twos_winners)}")
 if st.session_state.groups:
     st.write("---")
     st.header("🏆 Step 2: Scoring & Results")
