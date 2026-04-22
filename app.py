@@ -164,18 +164,53 @@ if selected:
 # --- 4. DISPLAY GROUPS & TEE TIMES ---
 if st.session_state.groups:
     st.write("---")
-    st.header("⛳ Today's Groups & Tee Times")
+    st.header("🏆 Step 2: Scoring & Results")
     
     # Starting at 08:30
     start_time = datetime.strptime("08:30", "%H:%M")
     
-    for i, group in enumerate(st.session_state.groups):
-        tee_time = (start_time + timedelta(minutes=i * 8)).strftime("%H:%M")
-        with st.container():
+    # We use a form so the page doesn't refresh every single time you type a number
+    with st.form("scoring_form"):
+        all_scores = []
+        
+        for i, group in enumerate(st.session_state.groups):
+            tee_time = (start_time + timedelta(minutes=i * 8)).strftime("%H:%M")
             st.subheader(f"🕞 {tee_time} - Group {i+1}")
-            names = ", ".join([p['name'] for p in group])
-            st.write(f"**Players:** {names}")
             
-    st.write("---")
-    st.header("🏆 Enter Results")
-    # ... Scoring logic follows below ...
+            # Create columns for headers
+            cols = st.columns([3, 1, 1, 1, 1])
+            cols[0].write("**Player**")
+            cols[1].write("**F9**")
+            cols[2].write("**B9**")
+            cols[3].write("**Total**")
+            cols[4].write("**2s?**")
+
+            for player in group:
+                p_name = player['name']
+                c = st.columns([3, 1, 1, 1, 1])
+                
+                c[0].write(f"**{p_name}** (Hcp: {player['handicap']})")
+                f9 = c[1].number_input("F9", min_value=0, max_value=50, value=0, key=f"f9_{p_name}", label_visibility="collapsed")
+                b9 = c[2].number_input("B9", min_value=0, max_value=50, value=0, key=f"b9_{p_name}", label_visibility="collapsed")
+                
+                total = f9 + b9
+                c[3].write(f"**{total}**")
+                
+                has_two = c[4].checkbox("2", key=f"two_{p_name}", label_visibility="collapsed")
+                
+                all_scores.append({
+                    "name": p_name,
+                    "f9": f9,
+                    "b9": b9,
+                    "total": total,
+                    "two": has_two,
+                    "handicap": player['handicap']
+                })
+            st.write("---")
+            
+        submit_scores = st.form_submit_state = st.form_submit_button("Calculate Winners & Update Handicaps")
+
+    if submit_scores:
+        # This is where the calculation logic from our previous version kicks in
+        # It determines the £15 / £5 / £0 splits and the 10% / 5% tax
+        process_results(all_scores)
