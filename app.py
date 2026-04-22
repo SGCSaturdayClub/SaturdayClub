@@ -4,8 +4,17 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 
-# --- DATABASE SETUP ---
+# --- 1. DATABASE SETUP ---
 DB_FILE = "members_db.csv"
+
+# --- 2. INITIALIZE SESSION STATE (CRITICAL FIX) ---
+# This must be here so the app doesn't crash on the first load
+if 'groups' not in st.session_state:
+    st.session_state.groups = []
+
+# --- 3. DATABASE FUNCTIONS ---
+def load_members():
+    # ... (rest of your load_members code)
 
 def load_members():
     if os.path.exists(DB_FILE):
