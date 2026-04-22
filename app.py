@@ -163,128 +163,70 @@ if selected:
 
 # --- 4. DISPLAY GROUPS & TEE TIMES ---
 def process_results(all_scores):
-    # 1. Load the latest database
     members_list = load_members()
+    pot_value = 15.0  # Or your dynamic pot variable
     
-    # 2. Identify Winners (Overall, Front 9, Back 9)
-    # This logic assumes the top score wins. If multiple tie, they split the pot.
+    # 1. Determine OVERALL Winners (Highest Priority)
     best_overall = max(p['total'] for p in all_scores)
-    best_f9 = max(p['f9'] for p in all_scores)
-    best_b9 = max(p['b9'] for p in all_scores)
-    
     winners_overall = [p['name'] for p in all_scores if p['total'] == best_overall]
-    winners_f9 = [p['name'] for p in all_scores if p['f9'] == best_f9]
-    winners_b9 = [p['name'] for p in all_scores if p['b9'] == best_b9]
     
-    # 3. Calculate Payouts (Assuming £15 pots as discussed)
-    pot_value = 15.0  # You can make this dynamic based on your sidebar input
+    # Create a list of players who have already won to exclude them from F9/B9
+    already_won = set(winners_overall)
     
-    overall_share = pot_value / len(winners_overall)
-    f9_share = pot_value / len(winners_f9)
-    b9_share = pot_value / len(winners_b9)
-    
-    # 4. Apply "Progressive Tax" and Update Database
+    # 2. Determine FRONT 9 Winners (Exclude Overall Winners)
+    # Filter scores to only include those not in the 'already_won' set
+    f9_eligible = [p for p in all_scores if p['name'] not in already_won]
+    if f9_eligible:
+        best_f9 = max(p['f9'] for p in f9_eligible)
+        winners_f9 = [p['name'] for p in f9_eligible if p['f9'] == best_f9]
+        already_won.update(winners_f9)
+    else:
+        winners_f9 = []
+
+    # 3. Determine BACK 9 Winners (Exclude Overall and F9 Winners)
+    b9_eligible = [p for p in all_scores if p['name'] not in already_won]
+    if b9_eligible:
+        best_b9 = max(p['b9'] for p in b9_eligible)
+        winners_b9 = [p['name'] for p in b9_eligible if p['b9'] == best_b9]
+    else:
+        winners_b9 = []
+
+    # --- Payouts & Database Updates ---
+    overall_share = pot_value / len(winners_overall) if winners_overall else 0
+    f9_share = pot_value / len(winners_f9) if winners_f9 else 0
+    b9_share = pot_value / len(winners_b9) if winners_b9 else 0
+
+    # Apply winnings and tax logic
     for m in members_list:
         p_score = next((s for s in all_scores if s['name'] == m['name']), None)
         if not p_score: continue
         
         amt_won = 0
         if m['name'] in winners_overall: amt_won += overall_share
-        if m['name'] in winners_f9: amt_won += f9_share
-        if m['name'] in winners_b9: amt_won += b9_share
+        elif m['name'] in winners_f9: amt_won += f9_share
+        elif m['name'] in winners_b9: amt_won += b9_share
         
-        # Handicap Deduction Logic
+        # 10% cut for a full win (£15), 5% for a split win
         if amt_won >= 15.0:
-            m['handicap'] = round(m['handicap'] * 0.90, 1) # 10% Cut
+            m['handicap'] = round(m['handicap'] * 0.90, 1)
         elif amt_won > 0:
-            m['handicap'] = round(m['handicap'] * 0.95, 1) # 5% Cut
+            m['handicap'] = round(m['handicap'] * 0.95, 1)
             
         m['main_winnings'] += amt_won
-        
-        # Handle 2s Pot
-        if p_score['two']:
-            m['twos_count'] += 1
-            # Logic for 2s payout would go here
-            
-    # 5. Save and Finish
+        if p_score['two']: m['twos_count'] += 1
+
     save_all_members(members_list)
-    st.success("Results Processed! Handicaps updated and winners recorded.")
-    st.balloons()
-# --- WINNERS SUMMARY DISPLAY ---
+    
+    # --- DISPLAY SUMMARY ---
     st.write("---")
-    st.success("### 💰 Payout Summary")
-    
+    st.success("### 💰 Seckford Payouts (One Prize Rule Applied)")
     col1, col2, col3 = st.columns(3)
-    
     with col1:
         st.subheader("Overall")
-        for w in winners_overall:
-            st.write(f"🏆 **{w}** (£{overall_share:.2f})")
-            
+        for w in winners_overall: st.write(f"🏆 {w} (£{overall_share:.2f})")
     with col2:
         st.subheader("Front 9")
-        for w in winners_f9:
-            st.write(f"🚩 **{w}** (£{f9_share:.2f})")
-            
+        for w in winners_f9: st.write(f"🚩 {w} (£{f9_share:.2f})")
     with col3:
         st.subheader("Back 9")
-        for w in winners_b9:
-            st.write(f"🏁 **{w}** (£{b9_share:.2f})")
-
-    # Optional: Display who hit a 2
-    twos_winners = [p['name'] for p in all_scores if p['two']]
-    if twos_winners:
-        st.write("---")
-        st.info(f"🎯 **2s Hit By:** {', '.join(twos_winners)}")
-if st.session_state.groups:
-    st.write("---")
-    st.header("🏆 Step 2: Scoring & Results")
-    
-    # Starting at 08:30
-    start_time = datetime.strptime("08:30", "%H:%M")
-    
-    # We use a form so the page doesn't refresh every single time you type a number
-    with st.form("scoring_form"):
-        all_scores = []
-        
-        for i, group in enumerate(st.session_state.groups):
-            tee_time = (start_time + timedelta(minutes=i * 8)).strftime("%H:%M")
-            st.subheader(f"🕞 {tee_time} - Group {i+1}")
-            
-            # Create columns for headers
-            cols = st.columns([3, 1, 1, 1, 1])
-            cols[0].write("**Player**")
-            cols[1].write("**F9**")
-            cols[2].write("**B9**")
-            cols[3].write("**Total**")
-            cols[4].write("**2s?**")
-
-            for player in group:
-                p_name = player['name']
-                c = st.columns([3, 1, 1, 1, 1])
-                
-                c[0].write(f"**{p_name}** (Hcp: {player['handicap']})")
-                f9 = c[1].number_input("F9", min_value=0, max_value=50, value=0, key=f"f9_{p_name}", label_visibility="collapsed")
-                b9 = c[2].number_input("B9", min_value=0, max_value=50, value=0, key=f"b9_{p_name}", label_visibility="collapsed")
-                
-                total = f9 + b9
-                c[3].write(f"**{total}**")
-                
-                has_two = c[4].checkbox("2", key=f"two_{p_name}", label_visibility="collapsed")
-                
-                all_scores.append({
-                    "name": p_name,
-                    "f9": f9,
-                    "b9": b9,
-                    "total": total,
-                    "two": has_two,
-                    "handicap": player['handicap']
-                })
-            st.write("---")
-            
-        submit_scores = st.form_submit_state = st.form_submit_button("Calculate Winners & Update Handicaps")
-
-    if submit_scores:
-        # This is where the calculation logic from our previous version kicks in
-        # It determines the £15 / £5 / £0 splits and the 10% / 5% tax
-        process_results(all_scores)
+        for w in winners_b9: st.write(f"🏁 {w} (£{b9_share:.2f})")
