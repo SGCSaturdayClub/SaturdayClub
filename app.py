@@ -122,111 +122,72 @@ if selected:
             if st.checkbox(f"Priority: {name}", key=f"pri_{name}"):
                 priority_players.append(name)
 
-# --- 3. THE DRAW (With 8:30 Start) ---
+# --- 3. THE DRAW (With 8:30 Start & Priority) ---
 if selected:
     if st.button("Shuffle & Generate Tee Times"):
         members_list = load_members()
         
-        # Separate Priority and Normal players
+        # Separate Priority and Normal
         priority_list = [m for m in members_list if m['name'] in priority_players]
         normal_list = [m for m in members_list if m['name'] in selected and m['name'] not in priority_players]
         
-        # Randomize both lists separately to maintain fairness within the tiers
         random.shuffle(priority_list)
         random.shuffle(normal_list)
         
-        # Combine: Priority players at the front of the queue
         full_roster = priority_list + normal_list
         
-        # Update appearance counts
-        for m in members_list:
-            if m['name'] in selected:
-                m['appearances'] += 1
-        save_all_members(members_list)
-        
-        # Grouping Logic (3s and 4s)
+        # Grouping Logic
         n = len(full_roster)
         num_fours = 1 if n % 3 == 1 else 2 if n % 3 == 2 else 0
         num_threes = (n - (num_fours * 4)) // 3
         
-        gps = []
+        temp_groups = []
         idx = 0
         for _ in range(num_fours): 
-            gps.append(full_roster[idx:idx+4])
+            temp_groups.append(full_roster[idx:idx+4])
             idx += 4
         for _ in range(num_threes): 
-            gps.append(full_roster[idx:idx+3])
+            temp_groups.append(full_roster[idx:idx+3])
             idx += 3
         
-        st.session_state.groups = gps
+        # Store in session state so it survives the rerun
+        st.session_state.groups = temp_groups
         st.rerun()
 
-# --- 4. DISPLAY GROUPS & TEE TIMES ---
-def process_results(all_scores):
-    members_list = load_members()
-    pot_value = 15.0  # Or your dynamic pot variable
-    
-    # 1. Determine OVERALL Winners (Highest Priority)
-    best_overall = max(p['total'] for p in all_scores)
-    winners_overall = [p['name'] for p in all_scores if p['total'] == best_overall]
-    
-    # Create a list of players who have already won to exclude them from F9/B9
-    already_won = set(winners_overall)
-    
-    # 2. Determine FRONT 9 Winners (Exclude Overall Winners)
-    # Filter scores to only include those not in the 'already_won' set
-    f9_eligible = [p for p in all_scores if p['name'] not in already_won]
-    if f9_eligible:
-        best_f9 = max(p['f9'] for p in f9_eligible)
-        winners_f9 = [p['name'] for p in f9_eligible if p['f9'] == best_f9]
-        already_won.update(winners_f9)
-    else:
-        winners_f9 = []
-
-    # 3. Determine BACK 9 Winners (Exclude Overall and F9 Winners)
-    b9_eligible = [p for p in all_scores if p['name'] not in already_won]
-    if b9_eligible:
-        best_b9 = max(p['b9'] for p in b9_eligible)
-        winners_b9 = [p['name'] for p in b9_eligible if p['b9'] == best_b9]
-    else:
-        winners_b9 = []
-
-    # --- Payouts & Database Updates ---
-    overall_share = pot_value / len(winners_overall) if winners_overall else 0
-    f9_share = pot_value / len(winners_f9) if winners_f9 else 0
-    b9_share = pot_value / len(winners_b9) if winners_b9 else 0
-
-    # Apply winnings and tax logic
-    for m in members_list:
-        p_score = next((s for s in all_scores if s['name'] == m['name']), None)
-        if not p_score: continue
-        
-        amt_won = 0
-        if m['name'] in winners_overall: amt_won += overall_share
-        elif m['name'] in winners_f9: amt_won += f9_share
-        elif m['name'] in winners_b9: amt_won += b9_share
-        
-        # 10% cut for a full win (£15), 5% for a split win
-        if amt_won >= 15.0:
-            m['handicap'] = round(m['handicap'] * 0.90, 1)
-        elif amt_won > 0:
-            m['handicap'] = round(m['handicap'] * 0.95, 1)
-            
-        m['main_winnings'] += amt_won
-        if p_score['two']: m['twos_count'] += 1
-
-    save_all_members(members_list)
-    
-    # --- DISPLAY SUMMARY ---
+# --- 4. DISPLAY & SCORING ---
+if st.session_state.groups:
     st.write("---")
-    st.success("### 💰 Seckford Payouts (One Prize Rule Applied)")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.subheader("Overall")
-        for w in winners_overall: st.write(f"🏆 {w} (£{overall_share:.2f})")
-    with col2:
-        st.subheader("Front 9")
-        for w in winners_f9: st.write(f"🚩 {w} (£{f9_share:.2f})")
-    with col3:
-        st.subheader("Back 9")
-        for w in winners_b9: st.write(f"🏁 {w} (£{b9_share:.2f})")
+    st.header("⛳ Today's Groups & Tee Times")
+    
+    start_time = datetime.strptime("08:30", "%H:%M")
+    
+    # We show the tee times first for everyone to see
+    for i, group in enumerate(st.session_state.groups):
+        tee_time = (start_time + timedelta(minutes=i * 8)).strftime("%H:%M")
+        names = ", ".join([p['name'] for p in group])
+        st.info(f"**{tee_time} - Group {i+1}:** {names}")
+
+    # Now the Scoring Form
+    st.write("---")
+    st.header("🏆 Enter Results")
+    with st.form("scoring_form"):
+        all_scores = []
+        for i, group in enumerate(st.session_state.groups):
+            st.subheader(f"Group {i+1}")
+            cols = st.columns([3, 1, 1, 1])
+            
+            for player in group:
+                p_name = player['name']
+                c = st.columns([3, 1, 1, 1])
+                c[0].write(f"**{p_name}**")
+                f9 = c[1].number_input("F9", 0, 50, 0, key=f"f9_{p_name}")
+                b9 = c[2].number_input("B9", 0, 50, 0, key=f"b9_{p_name}")
+                two = c[3].checkbox("2", key=f"two_{p_name}")
+                
+                all_scores.append({
+                    "name": p_name, "f9": f9, "b9": b9, 
+                    "total": f9+b9, "two": two, "handicap": player['handicap']
+                })
+        
+        if st.form_submit_button("Calculate Winners & Update Handicaps"):
+            process_results(all_scores)
