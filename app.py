@@ -29,12 +29,27 @@ def load_members():
         return df.to_dict('records')
     return []
 
+def load_members():
+    if os.path.exists(DB_FILE):
+        df = pd.read_csv(DB_FILE)
+        cols = {
+            'appearances': 0, 
+            'handicap': 18.0, 
+            'main_winnings': 0.0, # Separate Main Pot
+            'twos_winnings': 0.0, # Separate 2s Pot
+            'twos_count': 0
+        }
+        for col, default in cols.items():
+            if col not in df.columns: df[col] = default
+        return df.to_dict('records')
+    return []
+
 def save_all_members(member_list):
     pd.DataFrame(member_list).to_csv(DB_FILE, index=False)
 
 # --- UI SETUP ---
 st.set_page_config(page_title="Golf Roll-Up Pro", layout="wide")
-st.title("⛳ Saturday Club: 2026")
+st.title("⛳ Club Roll-Up: Season 2026")
 
 all_members = load_members()
 
@@ -44,15 +59,15 @@ if all_members:
     
     with col_left:
         st.subheader("🏆 Main Money List")
-        main_list = sorted(all_members, key=lambda x: x['Winnings'], reverse=True)[:3]
+        main_list = sorted(all_members, key=lambda x: x['main_winnings'], reverse=True)[:3]
         for i, m in enumerate(main_list):
-            st.write(f"{['🥇','🥈','🥉'][i]} **{m['Name']}**: £{m['Winnings']:.2f}")
+            st.write(f"{['🥇','🥈','🥉'][i]} **{m['name']}**: £{m['main_winnings']:.2f}")
 
     with col_right:
         st.subheader("🎯 2s Money List")
-        twos_list = sorted(all_members, key=lambda x: x['2s_Winnings'], reverse=True)[:3]
+        twos_list = sorted(all_members, key=lambda x: x['twos_winnings'], reverse=True)[:3]
         for i, m in enumerate(twos_list):
-            st.write(f"{['🥇','🥈','🥉'][i]} **{m['Name']}**: £{m['2s']:.2f} ({m['2s']} total)")
+            st.write(f"{['🥇','🥈','🥉'][i]} **{m['name']}**: £{m['twos_winnings']:.2f} ({m['twos_count']} total)")
     st.write("---")
 
 # --- SIDEBAR ADMIN ---
@@ -70,8 +85,8 @@ with st.sidebar:
         st.rerun()
 
 # --- 2. CHECK-IN ---
-member_names = sorted([m['Name'] for m in all_members])
-selected = st.multiselect("Check-in Players:", Name)
+member_names = sorted([m['name'] for m in all_members])
+selected = st.multiselect("Check-in Players:", member_names)
 
 if selected:
     if st.button("Shuffle & Start Round"):
