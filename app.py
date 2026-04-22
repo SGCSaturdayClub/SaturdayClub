@@ -79,7 +79,31 @@ with st.sidebar:
     if all_members:
         csv = pd.DataFrame(all_members).to_csv(index=False).encode('utf-8')
         st.download_button("📥 Backup Database", csv, "golf_database_2026.csv", "text/csv")
-    
+# --- ADD NEW PLAYER SECTION ---
+    st.write("---")
+    with st.expander("➕ Add New Player to Club"):
+        new_name = st.text_input("Player Name (First & Last)")
+        new_hc = st.number_input("Starting Handicap", 0.0, 54.0, 18.0, step=0.1)
+        if st.button("Add to Database"):
+            if new_name:
+                # Check if name already exists
+                if not any(m['name'].lower() == new_name.lower() for m in all_members):
+                    new_player = {
+                        "name": new_name,
+                        "handicap": new_hc,
+                        "appearances": 0,
+                        "main_winnings": 0.0,
+                        "twos_winnings": 0.0,
+                        "twos_count": 0
+                    }
+                    all_members.append(new_player)
+                    save_all_members(all_members)
+                    st.success(f"Added {new_name}!")
+                    st.rerun()
+                else:
+                    st.error("Player already exists!")
+            else:
+                st.warning("Please enter a name.")    
     if st.button("Clear Today's Groups"):
         st.session_state.groups = []
         st.rerun()
