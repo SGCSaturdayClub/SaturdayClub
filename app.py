@@ -14,16 +14,14 @@ if 'groups' not in st.session_state:
 
 # --- 3. DATABASE FUNCTIONS ---
 def load_members():
-    # ... (rest of your load_members code)
-
-def load_members():
     if os.path.exists(DB_FILE):
         df = pd.read_csv(DB_FILE)
+        # (The rest of your code here must also be indented...)
         cols = {
             'appearances': 0, 
             'handicap': 18.0, 
-            'main_winnings': 0.0, # Separate Main Pot
-            'twos_winnings': 0.0, # Separate 2s Pot
+            'main_winnings': 0.0,
+            'twos_winnings': 0.0,
             'twos_count': 0
         }
         for col, default in cols.items():
